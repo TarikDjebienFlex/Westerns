@@ -1,0 +1,153 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		xmlns:s="library://ns.adobe.com/flex/spark" 
+		title="Westerns"
+		viewActivate="viewActivateHandler(event)"
+		addedToStage="addedToStageHandler(event)">
+	
+	<fx:Declarations>
+		
+	</fx:Declarations>
+	
+	<s:titleContent>
+		<s:TextInput id="key" 
+					 width="100%"
+					 prompt="Titre du Western"/>
+	</s:titleContent>
+	<s:navigationContent/>
+	<s:actionContent>
+		<s:Button id="searchBtn"
+				  height="90%"
+				  icon="@Embed('assets/search.png')" 
+				  click="searchBtn_clickHandler(event)"/>
+	</s:actionContent>
+	
+	<s:viewMenuItems>
+		<s:ViewMenuItem label="Tri par Année"
+						click="menuSortItemClick(event)"
+						icon="@Embed('assets/83-calendar.png')"/>
+		<s:ViewMenuItem label="Tri par Nom"
+						click="menuSortItemClick(event)"
+						icon="@Embed('assets/152-rolodex.png')"/>
+	</s:viewMenuItems>
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.core.FlexGlobals;
+			
+			import spark.events.IndexChangeEvent;
+			import spark.events.ViewNavigatorEvent;
+			
+			import utils.Mobile;
+			
+			import westernsEvents.SingleParamEvent;
+			import westernsEvents.WesternsCollectionChange;
+			
+			private var _app:Object=FlexGlobals.topLevelApplication;
+			
+			private function searchBtn_clickHandler(event:MouseEvent):void
+			{
+				searchFilms(key.text);
+				
+			}
+			
+			private function filmsList_changeHandler(event:IndexChangeEvent):void
+			{
+				navigator.dispatchEvent(new SingleParamEvent(Westerns.WESTERNS_COLLECTION_CHANGE_ITEM,event.newIndex.toString()));
+			}
+			
+			private function viewActivateHandler(event:ViewNavigatorEvent):void
+			{
+				// gestion de l’orientation
+				setTileLayout(Mobile.getWidth());
+				
+				_app.addEventListener (WesternsCollectionChange.WESTERNS_COLLECTION_CHANGE_ARRAY,westernsCollectionChangeHandler);
+				
+				if (data == null){
+					// instanciation de la vue et pas restauration
+					// on affiche tous les films
+					searchFilms("");
+				}
+			}
+			
+			private function westernsCollectionChangeHandler(e:WesternsCollectionChange):void{
+				data=e.westerns.arrayCollection;
+			}
+			
+			private function searchFilms(key:String,sort:String="year"):void{
+				var e:SingleParamEvent=new SingleParamEvent (Westerns.WESTERNS_SEARCH_FILMS,key+" "+sort);
+				navigator.dispatchEvent(e);
+			}
+			
+			private function setTileLayout(screenWidth:Number):void{
+				    tileLayout.columnWidth = (screenWidth/tileLayout.requestedColumnCount)-tileLayout.horizontalGap ;
+			}
+			
+			private function addedToStageHandler (event:Event):void{
+				stage.addEventListener  
+					(StageOrientationEvent.ORIENTATION_CHANGE,orientationChangeHandler);
+			}
+			
+			private function orientationChangeHandler (e:StageOrientationEvent):void{
+				setTileLayout(Mobile.getWidth());
+			}
+			
+			private function menuSortItemClick(event:MouseEvent):void{
+				switch (event.currentTarget.label) {
+					case "Tri par Nom" :
+						searchFilms(key.text,"fr");
+						break;
+					
+					case "Tri par Année" :
+						searchFilms(key.text);
+						break;
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<s:states>
+		<s:State name="portrait"/>
+		<s:State name="landscape"/>
+	</s:states>
+	
+	<s:List id="filmsList" 
+			left="0" right="0" bottom="0" top="0" 
+			dataProvider="{data}" 
+			contentBackgroundColor="0x6b93aa"
+			change="filmsList_changeHandler(event)">
+		<s:layout>
+			<s:TileLayout id="tileLayout" orientation="rows" 
+						  horizontalGap="0" verticalGap="0"
+						  requestedColumnCount.landscape="2"
+						  requestedColumnCount.portrait="1"/>
+		</s:layout>
+		<s:itemRenderer>
+			<fx:Component>
+				<s:IconItemRenderer label="{data.fr}"
+									messageFunction="getMessage"
+									alternatingItemColors="[0xdadada,0xb0b0b0]"
+									color="0x5e5e5e" downColor="0x6b93aa"
+									messageStyleName="message"
+									iconField="imageURL" decorator="{assets.Chevron}"
+									iconPlaceholder="{assets.LoadingIcon}">
+					<fx:Script>
+						<![CDATA[
+							import assets.Chevron;
+							import assets.LoadingIcon;
+							
+							import vo.WesternVO;
+							
+							private function getMessage(item:Object):Object{
+								var western:WesternVO=item as WesternVO;
+								var label:String=western.director+" ("+western.year+")";
+								return label
+							}
+						]]>
+					</fx:Script>
+				</s:IconItemRenderer>
+				
+			</fx:Component>
+		</s:itemRenderer>
+	</s:List>
+</s:View>

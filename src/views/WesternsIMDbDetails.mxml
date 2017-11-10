@@ -1,0 +1,203 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009"
+		xmlns:s="library://ns.adobe.com/flex/spark"
+		xmlns:components="components.*"
+		
+		title="{data.fr}" 
+		enabled="false" 
+		destructionPolicy="never"
+		
+		viewActivate="viewActivateHandler(event)" 
+		creationComplete="creationCompleteHandler(event)">
+	
+	<fx:Declarations>
+		<s:HTTPService id="imdbService" 
+					   resultFormat="text"
+					   url="http://www.imdbapi.com/?t={data.fr}&amp;y={data.year}"
+					   result="imdbService_resultHandler(event)"/>
+		
+		<s:CrossFadeViewTransition id="_fadeTransition"/>
+		<s:FlipViewTransition id="_flipTransition"
+							  mode="cube"/>
+		
+		<s:Button label="Back" id="detailBtn"
+				  height="90%"
+				  enabled="false"
+				  click="navigator.popView(_fadeTransition)"/>
+	</fx:Declarations>
+	
+	<fx:Script>
+		<![CDATA[
+			import com.adobe.serialization.json.JSON;
+			
+			import flash.net.navigateToURL;
+			
+			import mx.core.FlexGlobals;
+			import mx.events.FlexEvent;
+			import mx.rpc.events.ResultEvent;
+			
+			import spark.components.ViewNavigator;
+			import spark.events.ViewNavigatorEvent;
+			import spark.managers.PersistenceManager;
+			
+			import utils.Mobile;
+			
+			import vo.IMDbvo;
+			[Bindable]
+			private var imdb:IMDbvo;
+			[Bindable]
+			[Embed("assets/mail.png")]
+			private var mailIcon:Class;
+			
+			private var _pm:PersistenceManager = FlexGlobals.topLevelApplication.persistenceManager;
+			
+			private function imdbService_resultHandler(event:ResultEvent):void
+			{
+				var imdbResult:Object=JSON.decode(event.result.toString());
+				imdb=IMDbvo.buildFromObject(imdbResult);
+				
+				bi.visible=false;
+				bi.includeInLayout=false;
+				enabled=true;
+				webBtn.visible=true;
+				detailBtn.enabled=true;
+			}
+			
+			private function imdb_clickHandler(event:MouseEvent):void{
+				navigator.pushView(WesternsIMDbWeb,imdb,null);// _flipTransition
+			}
+			
+			private function mailBtn_clickHandler(event:MouseEvent):void{
+				var queryString:String="?subject="+imdb.us+"&body="+imdb.toString();
+				navigateToURL(new URLRequest('mailto:'+mail.text+queryString));
+			}
+			
+			private function mail_focusOutHandler(event:FocusEvent):void
+			{
+				// enregistre le destinataire du mail dans l’espace de stockage local
+				_pm.setProperty("mailTo",mail.text);
+			}
+			
+			private function restoreMailTo():void{
+				var mailTo:String=String(_pm.getProperty("mailTo"));
+				if (mailTo && mailTo != "null"){
+					mail.text=mailTo;
+				}
+				else{
+					mail.text="foo@bar.com";
+				}
+			}
+			
+			private function viewActivateHandler(event:ViewNavigatorEvent):void
+			{
+				restoreMailTo();
+			}
+			
+			private function creationCompleteHandler(event:FlexEvent):void
+			{
+				imdbService.send();
+				addIOSbtn(detailBtn);
+			}
+			
+			private function addIOSbtn(btn:Button):void{
+				var app:Object=FlexGlobals.topLevelApplication;
+				var appNavigator:ViewNavigator=app.navigator;
+				var navArr:Array;
+				if (Mobile.iOS()){
+					navArr=appNavigator.activeView.navigationContent;
+					if(navArr){// installation sur le navigationContent de la vue
+						navArr.push(btn);
+						appNavigator.activeView.navigationContent=navArr;
+					}
+					else{//installation sur le navigationContent de l’appli
+						navArr=app.navigationContent as Array;
+						navArr.push(btn);
+						app.navigationContent=navArr;
+					}
+				}
+			}
+		]]>
+	</fx:Script>
+	
+	<s:navigationContent/>
+	<s:actionContent>
+		<s:Button id="webBtn" label="Web"
+				  visible="false" width="100%" height="90%"
+				  click="imdb_clickHandler(event)"/>
+		<s:BusyIndicator id="bi" 
+						 visible="true" symbolColor="white"
+						 top="0" horizontalCenter="0" />
+	</s:actionContent>
+	
+	<s:layout>
+		<s:VerticalLayout gap="20" paddingBottom="5" paddingLeft="5" paddingRight="5" paddingTop="5"/>
+	</s:layout>
+	
+	<s:viewMenuItems>
+		<components:HomeMenuItem appNavigator="{navigator}"/>
+	</s:viewMenuItems>
+	
+	<s:TextArea id="plot_ta"
+				width="100%"
+				editable="false"
+				text="{imdb.plot}"/>
+	<s:Label width="100%"
+			 text="{imdb.us}"
+			 textAlign="center" fontWeight="bold"/>
+	
+	<s:Scroller width="100%" height="80%">
+		<s:Group horizontalCenter="0">
+			<s:Form top="0" width="100%" horizontalCenter="0">
+				<s:layout>
+					<s:FormLayout gap="5"/>
+				</s:layout>
+				
+				<s:FormItem width="100%" label="director:">
+					<s:Label text="{imdb.director}" width="100%"/>
+				</s:FormItem>
+				
+				<s:FormItem width="100%" label="actors:">
+					<s:Label text="{imdb.actors}" width="100%"/>
+				</s:FormItem>
+				<s:Line width="100%">
+					<s:stroke>
+						<s:SolidColorStroke color="#3a3a3a"/>
+					</s:stroke>
+				</s:Line>
+				
+				<s:FormItem width="100%" label="runtime:">
+					<s:Label text="{imdb.runtime}"/>
+				</s:FormItem>
+				
+				<s:FormItem width="100%" label="rating:">
+					<s:Label text="{imdb.rating}"/>
+				</s:FormItem>
+				
+				<s:FormItem width="100%" label="genre:">
+					<s:Label text="{imdb.genre}" width="100%"/>
+				</s:FormItem>
+				
+				<s:FormItem width="100%" label="writer:">
+					<s:Label text="{imdb.writer}" width="100%"/>
+				</s:FormItem>
+				
+				<s:FormItem width="100%" label="year:">
+					<s:Label text="{imdb.year}"/>
+				</s:FormItem>
+				
+			</s:Form>
+			
+		</s:Group>
+		
+	</s:Scroller>
+	
+	<s:HGroup left="5" bottom="5" 
+			  width="100%" horizontalCenter="0" verticalAlign="middle">
+		<s:Button width="60" height="60" 
+				  click="mailBtn_clickHandler(event)" 
+				  icon="{mailIcon}"/>
+		<s:TextInput id="mail" width="100%" 
+					 text="foo@bar.com"
+					 focusOut="mail_focusOutHandler(event)"/>
+	</s:HGroup>
+</s:View>

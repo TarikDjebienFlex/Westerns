@@ -1,0 +1,113 @@
+<?xml version="1.0" encoding="utf-8"?>
+<s:View xmlns:fx="http://ns.adobe.com/mxml/2009" 
+		xmlns:s="library://ns.adobe.com/flex/spark" 
+		xmlns:components="components.*"
+		title="IMDb"
+		
+		viewActivate="viewActivateHandler(event)" 
+		creationComplete="creationCompleteHandler(event)"
+		dataChange="dataChangeHandler(event)"
+		addedToStage="addedToStageHandler(event)" >
+	
+	<fx:Script>
+		<![CDATA[
+			import mx.events.FlexEvent;
+			
+			import spark.events.ViewNavigatorEvent;
+			
+			import utils.Mobile;
+			
+			import vo.IMDbvo;
+			
+			private var _webView:StageWebView=new StageWebView();
+			[Bindable] private var url:String="";
+			
+			private function viewActivateHandler(event:ViewNavigatorEvent):void
+			{
+				stageWebViewDisplay(this.url);
+				webSetViewPort (Mobile.getWidth(), Mobile.getHeight());
+			}
+			
+			private function dataChangeHandler(event:FlexEvent):void
+			{
+				var item:IMDbvo=data as IMDbvo;
+				url="http://www.imdb.com/title/"+item.id;
+			}
+			
+			private function removeHandler(e:ViewNavigatorEvent):void{
+				_webView.dispose();
+			}
+			
+			private function stageWebViewDisplay(url:String):void{
+				if (StageWebView.isSupported){
+					_webView.stage=stage;
+					_webView.addEventListener (ErrorEvent.ERROR, webViewErrorHandler);
+					_webView.addEventListener(Event.COMPLETE, webViewCompleteHandler);
+					_webView.loadURL(url);
+					addEventListener (ViewNavigatorEvent.REMOVING, removeHandler);
+				}
+			}
+			
+			private function webViewErrorHandler(error:ErrorEvent):void { 
+				trace(error);
+			}
+			
+			private function webSetViewPort (currWidth:Number, currHeight:Number):void{
+				if (_webView){
+					var offset:int=5;
+					var topY:Number=0;
+					if(navigator)
+					topY=navigator.actionBar.height + offset;
+					var webWidth:Number=currWidth - offset;
+					var webHeight:Number=currHeight - topY - (2 * offset);
+					_webView.viewPort=new Rectangle (offset, topY, webWidth, webHeight);
+				}
+			}
+			
+			private function addedToStageHandler(event:Event):void{
+				stage.addEventListener (StageOrientationEvent.ORIENTATION_CHANGE, orientationChangeHandler);
+			}
+			
+			private function orientationChangeHandler(e:StageOrientationEvent):void{
+				webSetViewPort(Mobile.getWidth(), Mobile.getHeight());
+			}
+			
+			private function webViewCompleteHandler(event:Event):void
+			{
+				bi.visible=false;
+				_webView.removeEventListener(Event.COMPLETE, webViewCompleteHandler);
+			}
+			
+			private function creationCompleteHandler(event:FlexEvent):void
+			{
+				Mobile.addIOSbtn(backBtn);
+			}
+			
+		]]>
+	</fx:Script>
+	
+	<fx:Declarations>
+		<s:Bounce id="_bounceEasing"/>
+		<s:FlipViewTransition id="_flipTransition"
+							  duration="500"
+							  mode="cube"
+							  direction="right"
+							  easer="{_bounceEasing}"/>
+		<s:Button label="Back" id="backBtn"
+				  height="90%"
+				  click="navigator.popView(_flipTransition)"/>
+	</fx:Declarations>
+	
+	<s:navigationContent/>
+	<s:actionContent>
+		<s:BusyIndicator id="bi"
+						 visible="true"
+						 top="2"
+						 horizontalCenter="0"
+						 symbolColor="white"/>
+	</s:actionContent>
+	
+	<s:viewMenuItems>
+		<components:HomeMenuItem appNavigator="{navigator}"/>
+	</s:viewMenuItems>
+</s:View>
